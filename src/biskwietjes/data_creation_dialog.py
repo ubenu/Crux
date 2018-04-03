@@ -10,9 +10,7 @@ import pandas as pd, numpy as np
 from scipy.stats import norm
 import copy as cp
 
-from blitspak.crux_table_model import CruxTableModel
-#from numba.tests.npyufunc.test_ufunc import dtype
-#from koekjespak.crux_function_definitions import n_independents
+from biskwietjes.crux_table_model import CruxTableModel
 
 class DataCreationDialog(widgets.QDialog):
 

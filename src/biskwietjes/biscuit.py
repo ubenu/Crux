@@ -7,8 +7,6 @@ Created on Tue Oct 25 13:11:32 2016
 @author: Maria Schilstra
 """
 
-#from PyQt5.uic import loadUiType
-
 from PyQt5 import QtCore as qt
 from PyQt5 import QtWidgets as widgets
 from PyQt5 import QtGui as gui
@@ -16,14 +14,14 @@ from PyQt5 import QtGui as gui
 import pandas as pd, numpy as np, copy as cp
 
 
-from blitspak.blits_mpl import MplCanvas, NavigationToolbar
-from blitspak.blits_data import BlitsData
-from blitspak.function_dialog import FunctionSelectionDialog
-from blitspak.data_creation_dialog import DataCreationDialog
-from blitspak.crux_framework import FunctionsFramework
+from biskwietjes.crux_mpl import MplCanvas, NavigationToolbar
+from biskwietjes.crux_reader import BlitsData
+from biskwietjes.function_dialog import FunctionSelectionDialog
+from biskwietjes.data_creation_dialog import DataCreationDialog
+from biskwietjes.crux_framework import FunctionsFramework
 
 from PyQt5.uic import loadUiType
-Ui_MainWindow, QMainWindow = loadUiType('blits.ui')
+Ui_MainWindow, QMainWindow = loadUiType('crux.ui')
 
 # Original:
 # To avoid using .ui file (from QtDesigner) and loadUIType, 
@@ -102,7 +100,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         
         self.chk_global.stateChanged.connect(self.on_global_changed)
         
-        self.blits_data = BlitsData()
+        self.crux_reader = BlitsData()
         self.blits_fitted = BlitsData()
         self.blits_residuals = BlitsData()
         
@@ -127,12 +125,12 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         self.df_series_spec = None 
         self.df_params_spec = None
         if self.current_state in (self.ST_READY, ):
-            series_names = self.blits_data.get_series_names()
+            series_names = self.crux_reader.get_series_names()
             param_names = self.current_function.get_parameter_names()
-            axis_names = self.blits_data.get_axes_names()
+            axis_names = self.crux_reader.get_axes_names()
             
             self.df_xlimits = pd.DataFrame(columns=['min', 'max'], index=axis_names)
-            mins, maxs = self.blits_data.series_extremes()
+            mins, maxs = self.crux_reader.series_extremes()
             xmins, xmaxs = mins.iloc[:, :-1].min(axis=0), maxs.iloc[:, :-1].max(axis=0)
             self.df_xlimits.loc[:, 'min'] = xmins
             self.df_xlimits.loc[:, 'max'] = xmaxs
@@ -337,7 +335,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             self.set_axis_selector()
             self.canvas.clear_plots()
             
-            self.blits_data = BlitsData()
+            self.crux_reader = BlitsData()
             self.blits_fitted = BlitsData()
             self.blits_residuals = BlitsData()
             
@@ -355,13 +353,13 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         if self.current_state in (self.FUNCTION_ONLY, ):
             self.create_data_set_dialog = DataCreationDialog(None, self.current_function)
             if self.create_data_set_dialog.exec() == widgets.QDialog.Accepted:
-                self.blits_data = BlitsData()
-                self.blits_data.series_names = self.create_data_set_dialog.get_series_names()
-                self.blits_data.axis_names = self.create_data_set_dialog.get_axes()
-                self.blits_data.series_dict = self.create_data_set_dialog.get_series_dict()
+                self.crux_reader = BlitsData()
+                self.crux_reader.series_names = self.create_data_set_dialog.get_series_names()
+                self.crux_reader.axis_names = self.create_data_set_dialog.get_axes()
+                self.crux_reader.series_dict = self.create_data_set_dialog.get_series_dict()
                 df_pars = self.create_data_set_dialog.get_parameters()
                 self.current_state = self.ST_READY
-                self.current_xaxis = self.blits_data.get_axes_names()[0]
+                self.current_xaxis = self.crux_reader.get_axes_names()[0]
                 try:
                     self.set_axis_selector()
                     self.draw_current_data_set()
@@ -419,9 +417,9 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             file_path = widgets.QFileDialog.getOpenFileName(self, 
             "Open Data File", "", "CSV data files (*.csv);;All files (*.*)")[0]
             if file_path:
-                self.blits_data.import_data(file_path)
-                axes = self.blits_data.get_axes_names() #cp.deepcopy(self.blits_data.get_axes_names())
-                self.current_xaxis = axes[0] #self.blits_data.get_axes_names()[0]
+                self.crux_reader.import_data(file_path)
+                axes = self.crux_reader.get_axes_names() #cp.deepcopy(self.crux_reader.get_axes_names())
+                self.current_xaxis = axes[0] #self.crux_reader.get_axes_names()[0]
                 if self.current_state == self.ST_START:
                     self.current_state = self.ST_DATA_ONLY
                 else:
@@ -497,7 +495,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             if not self.current_state in (self.ST_START, self.ST_DATA_ONLY):  # a current function exists
                 name = self.current_function.name
             if self.current_state in (self.ST_DATA_ONLY, self.ST_READY, ):
-                n_axes = len(self.blits_data.get_axes_names())
+                n_axes = len(self.crux_reader.get_axes_names())
             self.function_dialog = FunctionSelectionDialog(self, n_axes=n_axes, selected_fn_name=name)
             if self.function_dialog.exec() == widgets.QDialog.Accepted:
                 self.current_function = self.function_dialog.get_selected_function()
@@ -524,10 +522,10 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
     def draw_current_data_set(self):
         self.canvas.clear_plots() 
         if self.current_state not in (self.ST_START, self.FUNCTION_ONLY, ):
-            if self.blits_data.has_data():
-                self.canvas.set_colours(self.blits_data.series_names.tolist())
-                for key in self.blits_data.series_names:
-                    series = self.blits_data.series_dict[key]
+            if self.crux_reader.has_data():
+                self.canvas.set_colours(self.crux_reader.series_names.tolist())
+                for key in self.crux_reader.series_names:
+                    series = self.crux_reader.series_dict[key]
                     x = series[self.current_xaxis] 
                     y = series[key] 
                     self.canvas.draw_series(key, x, y, 'primary')
@@ -562,7 +560,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         self.preserve_xlimits()
         start, stop = self.df_xlimits.loc[self.current_xaxis].as_matrix() # self.canvas.get_vline_positions()
         for s in series_names:
-            series = self.blits_data.series_dict[s] # the full data set
+            series = self.crux_reader.series_dict[s] # the full data set
             indmin = series[self.current_xaxis].searchsorted(start, side='left')[0]
             indmax = series[self.current_xaxis].searchsorted(stop, side='right')[0]
             selection = cp.deepcopy(series[indmin:indmax]).as_matrix().transpose()
@@ -663,9 +661,9 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
     def set_axis_selector(self):
         self.axis_selector_buttons = {}
         self.clearLayout(self.axis_layout)
-        if self.blits_data.has_data():
+        if self.crux_reader.has_data():
             self.axis_layout.addStretch()
-            for name in self.blits_data.get_axes_names():
+            for name in self.crux_reader.get_axes_names():
                 btn = widgets.QRadioButton()
                 btn.setText(name)
                 btn.toggled.connect(self.on_xaxis_changed)
@@ -680,7 +678,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         selected_series = self.get_selected_series_names()
         params = self.get_param_values_for_fitting(selected_series)
         data = self.get_data_for_fitting(selected_series)
-        axes = self.blits_data.get_axes_names()
+        axes = self.crux_reader.get_axes_names()
 
         series_dict = {}
         for series_name, series_params, i in zip(selected_series, params, range(len(selected_series))):
@@ -704,7 +702,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         selected_series = self.get_selected_series_names()
         params = self.get_param_values_for_fitting(selected_series)
         data = self.get_data_for_fitting(selected_series)
-        axes = self.blits_data.get_axes_names()
+        axes = self.crux_reader.get_axes_names()
         
         series_dict = {}
         for series_name, series_params, i in zip(selected_series, params, range(len(selected_series))):
@@ -726,7 +724,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         selected_series = self.get_selected_series_names()
         params = self.get_param_values_for_fitting(selected_series)
         data = self.get_data_for_fitting(selected_series)
-        daxes = self.blits_data.get_axes_names()
+        daxes = self.crux_reader.get_axes_names()
         faxes = self.current_function.independents
         axes = np.array([f + "\n(" + a + ")"  for a, f in zip(daxes, faxes)])
         df_data = None
@@ -746,7 +744,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         selected_series = self.get_selected_series_names()
         params = self.get_param_values_for_fitting(selected_series)
         data = self.get_data_for_fitting(selected_series)
-        daxes = self.blits_data.get_axes_names()
+        daxes = self.crux_reader.get_axes_names()
         faxes = self.current_function.independents
         axes = np.array([f + "\n(" + a + ")"  for a, f in zip(daxes, faxes)])
         df_data = None

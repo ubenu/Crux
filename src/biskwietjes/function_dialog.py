@@ -9,7 +9,7 @@ from PyQt5 import QtWidgets as widgets
 
 import pandas as pd, numpy as np, copy as cp
 
-import blitspak.crux_function_definitions as fdefs
+import biskwietjes.crux_function_definitions as fdefs # biskwietjes.crux_function_definitions as fdefs
 
 
 if __name__ == '__main__':
