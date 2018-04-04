@@ -10,7 +10,7 @@ import pandas as pd, numpy as np
 from scipy.stats import norm
 import copy as cp
 
-from biskwietjes.crux_table_model import CruxTableModel
+from koektrommel.crux_table_model import CruxTableModel
 
 class DataCreationDialog(widgets.QDialog):
 

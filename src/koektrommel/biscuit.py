@@ -14,11 +14,11 @@ from PyQt5 import QtGui as gui
 import pandas as pd, numpy as np, copy as cp
 
 
-from biskwietjes.crux_mpl import MplCanvas, NavigationToolbar
-from biskwietjes.crux_reader import BlitsData
-from biskwietjes.function_dialog import FunctionSelectionDialog
-from biskwietjes.data_creation_dialog import DataCreationDialog
-from biskwietjes.crux_framework import FunctionsFramework
+from koektrommel.crux_mpl import MplCanvas, NavigationToolbar
+from koektrommel.crux_reader import BlitsData
+from koektrommel.function_dialog import FunctionSelectionDialog
+from koektrommel.data_creation_dialog import DataCreationDialog
+from koektrommel.crux_framework import FunctionsFramework
 
 from PyQt5.uic import loadUiType
 Ui_MainWindow, QMainWindow = loadUiType('crux.ui')
@@ -39,27 +39,22 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
     N_STATES = 5
     ST_START, ST_DATA_ONLY, FUNCTION_ONLY, ST_READY, REJECT = range(N_STATES)
     
-    N_PS_SPECTYPES = 7
-    PS_VALUES, PS_LEDITS, PS_VALUE_FIXED, PS_FIX_CBOXES, PS_GROUPS, PS_COMBOS, PS_SIGMAS = range(N_PS_SPECTYPES)
-    N_P_SPECTYPES = 4
-    P_ALL_FIXED, P_FIX_CBOXES, P_ALL_LINKED, P_LINK_CBOXES = range(N_P_SPECTYPES)
-    N_S_SPECTYPES = 3
-    S_INCLUDED, S_INCLUDE_CBOXES, S_FTOL = range(N_S_SPECTYPES)
-    
-    ps_types = ['param_values', 'param_line_edits', 'param_values_fixed', 'param_fix_cboxes', 'series_groups', 'series_combos', 'sigmas']
     s_types = ['included', 'included_cboxes', 'ftol']
     p_types = ['all_fixed', 'all_fixed_cboxes', 'all_linked', 'all_linked_cboxes']
+    ps_types = ['param_values', 'param_line_edits', 'param_values_fixed', 'param_fix_cboxes', 'series_groups', 'series_combos', 'sigmas']
+    sd_types = ['observed', 'calculated', 'difference']
+
+    PS_VALUES, PS_LEDITS, PS_VALUE_FIXED, PS_FIX_CBOXES, PS_GROUPS, PS_COMBOS, PS_SIGMAS = range(len(ps_types))
+    P_ALL_FIXED, P_FIX_CBOXES, P_ALL_LINKED, P_LINK_CBOXES = range(len(p_types))
+    S_INCLUDED, S_INCLUDE_CBOXES, S_FTOL = range(len(s_types))
+    SD_OBSERVED, SD_CALCULATED, SD_DIFFERENCE = range(len(sd_types))
+    
 
     def __init__(self, ):
         super(Main, self).__init__()
         self.setupUi(self)
-        x = gui.QIcon("Images\\TheCrux.png")
-        self.setWindowIcon(x)
-                
-
-        self.scrutinize_dialog = None
-        self.function_dialog = None
-        self.create_data_set_dialog = None
+        thecrux = gui.QIcon("Images\\TheCrux.png")
+        self.setWindowIcon(thecrux)
                 
         self.canvas = MplCanvas(self.mpl_window)
         self.plot_toolbar = NavigationToolbar(self.canvas, self.mpl_window)
@@ -100,17 +95,22 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         
         self.chk_global.stateChanged.connect(self.on_global_changed)
         
+        self.scrutinize_dialog = None
+        self.function_dialog = None
+        self.create_data_set_dialog = None
+                
         self.crux_reader = BlitsData()
         self.blits_fitted = BlitsData()
         self.blits_residuals = BlitsData()
         
-        self.pn_fit_spec = None
+        self.pn_params_series = None
+        self.pn_series_data = None
         self.df_params_spec = None
         self.df_series_spec = None
         self.df_xlimits = None
+        self.axis_selector_buttons = None
 
         self.current_xaxis = None
-        self.axis_selector_buttons = None
         self.current_function = None
         
         self.nfitted_points = 50
@@ -121,7 +121,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         
     def init_fit_spec(self):      
         self.df_xlimits = None  
-        self.pn_fit_spec = None
+        self.pn_params_series = None
         self.df_series_spec = None 
         self.df_params_spec = None
         if self.current_state in (self.ST_READY, ):
@@ -135,9 +135,9 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             self.df_xlimits.loc[:, 'min'] = xmins
             self.df_xlimits.loc[:, 'max'] = xmaxs
 
-            self.pn_fit_spec = pd.Panel(major_axis=param_names, minor_axis=series_names, items=self.ps_types)
-            self.pn_fit_spec.loc[self.ps_types[self.PS_VALUES]] = 1.0
-            self.pn_fit_spec.loc[self.ps_types[self.PS_VALUE_FIXED]] = qt.Qt.Unchecked
+            self.pn_params_series = pd.Panel(major_axis=param_names, minor_axis=series_names, items=self.ps_types)
+            self.pn_params_series.loc[self.ps_types[self.PS_VALUES]] = 1.0
+            self.pn_params_series.loc[self.ps_types[self.PS_VALUE_FIXED]] = qt.Qt.Unchecked
             
             self.df_series_spec = pd.DataFrame(index=series_names, columns=self.s_types)
             self.df_series_spec.loc[:, self.s_types[self.S_INCLUDED]] = qt.Qt.Checked
@@ -145,6 +145,11 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             self.df_params_spec.loc[:, self.p_types[self.P_ALL_FIXED]] = qt.Qt.Unchecked
             self.df_params_spec.loc[:, self.p_types[self.P_ALL_LINKED]] = qt.Qt.Unchecked
             
+            self.chk_include_all = widgets.QCheckBox()
+            self.chk_include_all.setText("")
+            self.chk_include_all.setToolTip("Check to include all in analysis")
+            self.chk_include_all.setCheckState(qt.Qt.Checked) 
+            self.chk_include_all.stateChanged.connect(self.on_all_series_selected_changed)
             for sname in series_names:
                 cbx = widgets.QCheckBox()
                 cbx.setText("")
@@ -176,7 +181,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                 for sname in series_names:
                     edt = widgets.QLineEdit()
                     edt.setValidator(gui.QDoubleValidator())
-                    edt.setText("{:.3g}".format(self.pn_fit_spec.loc[self.ps_types[self.PS_VALUES], pname, sname]))
+                    edt.setText("{:.3g}".format(self.pn_params_series.loc[self.ps_types[self.PS_VALUES], pname, sname]))
                     edt.textChanged.connect(self.on_param_val_changed)
                     cbx = widgets.QCheckBox()
                     cbx.setToolTip("Check to keep " + pname + " constant for series " + sname)
@@ -191,7 +196,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                     try:
                         sp_vals = [float(edt.text()), edt, cbx.checkState(), cbx, combo.currentText(), combo]
                         for sp, val in zip(self.ps_types, sp_vals):
-                            self.pn_fit_spec.loc[sp, pname, sname] = val
+                            self.pn_params_series.loc[sp, pname, sname] = val
                     except Exception as e:
                         print(e)
                 
@@ -209,9 +214,9 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             self.lbl_fn_name.setText("Selected function: None")
             self.txt_description.setText("")
         if self.current_state in (self.ST_READY, ):
-            if self.pn_fit_spec is not None:
-                params = self.pn_fit_spec.major_axis.values
-                series = self.pn_fit_spec.minor_axis.values
+            if self.pn_params_series is not None:
+                params = self.pn_params_series.major_axis.values
+                series = self.pn_params_series.minor_axis.values
                 colours = self.canvas.curve_colours
                 
                 ptbl_vheader = [widgets.QTableWidgetItem("All")]
@@ -252,8 +257,8 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                     self.tbl_param_values.setCellWidget(0, col, w)
                 for sname, row in zip(series, vrange):
                     for pname, col in zip(params, hrange):
-                        edt = self.pn_fit_spec.loc[self.ps_types[self.PS_LEDITS], pname, sname]
-                        cbx = self.pn_fit_spec.loc[self.ps_types[self.PS_FIX_CBOXES], pname, sname]
+                        edt = self.pn_params_series.loc[self.ps_types[self.PS_LEDITS], pname, sname]
+                        cbx = self.pn_params_series.loc[self.ps_types[self.PS_FIX_CBOXES], pname, sname]
                         w = self.checkable_edit_widget(cbx, edt)
                         self.tbl_param_values.setCellWidget(row, col, w)
                         
@@ -265,7 +270,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                     self.tbl_series_links.setCellWidget(0, col, w)
                 for sname, row in zip(series, vrange):
                     for pname, col in zip(params, hrange):
-                        self.tbl_series_links.setCellWidget(row, col, self.pn_fit_spec.loc['series_combos', pname, sname])
+                        self.tbl_series_links.setCellWidget(row, col, self.pn_params_series.loc['series_combos', pname, sname])
                 
                 self.tbl_param_values.resizeRowsToContents()
                 self.tbl_series_links.resizeRowsToContents()
@@ -277,7 +282,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             if param is not None:
                 checkstate = int(self.df_params_spec.loc[param, col].checkState())
                 self.df_params_spec.loc[param, self.p_types[self.P_ALL_FIXED]] = checkstate # synchronise with logical representation
-                self.pn_fit_spec.loc[self.ps_types[self.PS_VALUE_FIXED], param] = checkstate
+                self.pn_params_series.loc[self.ps_types[self.PS_VALUE_FIXED], param] = checkstate
                 self.update_param_vals_table()
 
     def on_all_linked_changed(self):
@@ -286,12 +291,16 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             if param is not None:
                 checkstate = self.df_params_spec.loc[param, col].checkState()
                 self.df_params_spec.loc[param, self.p_types[self.P_ALL_LINKED]] = checkstate # synchronise with logical representation
-                linkto = self.pn_fit_spec.loc[self.ps_types[self.PS_GROUPS], param].iloc[0]
-                for series in self.pn_fit_spec.loc[self.ps_types[self.PS_GROUPS], param].index:
+                linkto = self.pn_params_series.loc[self.ps_types[self.PS_GROUPS], param].iloc[0]
+                for series in self.pn_params_series.loc[self.ps_types[self.PS_GROUPS], param].index:
                     if checkstate == qt.Qt.Unchecked: 
                         linkto = series
-                    self.pn_fit_spec.loc[self.ps_types[self.PS_GROUPS], param, series] = linkto
+                    self.pn_params_series.loc[self.ps_types[self.PS_GROUPS], param, series] = linkto
                 self.update_linkage_table()
+                
+    def on_all_series_selected_changed(self):
+        pass
+    
             
     def on_analyze(self):
         if self.current_state in (self.ST_READY, ):
@@ -306,10 +315,10 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                 sr_ftol = pd.Series(tol, index=series)          
                 for pname, row in df_pars.iterrows():
                     for sname, val in row.iteritems():
-                        self.pn_fit_spec.loc[self.ps_types[self.PS_VALUES], pname, sname] = val
+                        self.pn_params_series.loc[self.ps_types[self.PS_VALUES], pname, sname] = val
                 for pname, row in df_sigm.iterrows():
                     for sname, val in row.iteritems():
-                        self.pn_fit_spec.loc[self.ps_types[self.PS_SIGMAS], pname, sname] = val
+                        self.pn_params_series.loc[self.ps_types[self.PS_SIGMAS], pname, sname] = val
                 for sname, val in sr_ftol.iteritems():
                     self.df_series_spec.loc[sname, self.s_types[self.S_FTOL]] = val
                 self.on_calculate()
@@ -366,7 +375,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                     self.init_fit_spec()
                     for pname, row in df_pars.iterrows():
                         for sname, val in row.iteritems():
-                            self.pn_fit_spec.loc[self.ps_types[self.PS_VALUES], pname, sname] = val                                 
+                            self.pn_params_series.loc[self.ps_types[self.PS_VALUES], pname, sname] = val                                 
                     self.init_ui()
                 except Exception as e:
                     print(e)
@@ -387,7 +396,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             try:
                 for pname, row in df_pars.iterrows():
                     for sname, val in row.iteritems():
-                        self.pn_fit_spec.loc[self.ps_types[self.PS_VALUES], pname, sname] = val
+                        self.pn_params_series.loc[self.ps_types[self.PS_VALUES], pname, sname] = val
             except Exception as e:
                 print(e)
             self.update_param_vals_table()
@@ -402,11 +411,11 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
     
     def on_linkage_changed(self):
         if self.current_state in (self.ST_READY, ):
-            df = self.pn_fit_spec.loc[self.ps_types[self.PS_COMBOS]]
+            df = self.pn_params_series.loc[self.ps_types[self.PS_COMBOS]]
             param, series = self.find_sender_index(df)
             if param is not None and series is not None:
                 link = df.loc[param, series].currentText()
-                self.pn_fit_spec.loc[self.ps_types[self.PS_GROUPS], param, series] = link
+                self.pn_params_series.loc[self.ps_types[self.PS_GROUPS], param, series] = link
                 self.rationalise_groups(param)
                 self.update_linkage_table()
             pass
@@ -437,24 +446,24 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
     def on_param_fix_changed(self):
         if self.current_state in (self.ST_READY, ):
             param, series = None, None
-            df = self.pn_fit_spec.loc[self.ps_types[self.PS_FIX_CBOXES]]
+            df = self.pn_params_series.loc[self.ps_types[self.PS_FIX_CBOXES]]
             param, series = self.find_sender_index(df)
             if param is not None and series is not None:
                 param, series = self.find_sender_index(df)
                 try:
-                    self.pn_fit_spec.loc[self.ps_types[self.PS_VALUE_FIXED], param, series] = int(self.sender().checkState())
+                    self.pn_params_series.loc[self.ps_types[self.PS_VALUE_FIXED], param, series] = int(self.sender().checkState())
                 except Exception as e:
                     print(e)                
                     
     def on_param_val_changed(self):
         if self.current_state in (self.ST_READY, ):
             param, series = None, None
-            df = self.pn_fit_spec.loc[self.ps_types[self.PS_LEDITS]]
+            df = self.pn_params_series.loc[self.ps_types[self.PS_LEDITS]]
             param, series = self.find_sender_index(df)
             if param is not None and series is not None:
                 param, series = self.find_sender_index(df)
                 try:
-                    self.pn_fit_spec.loc[self.ps_types[self.PS_VALUES], param, series] = float(self.sender().text())
+                    self.pn_params_series.loc[self.ps_types[self.PS_VALUES], param, series] = float(self.sender().text())
                 except Exception as e:
                     print(e)
         
@@ -479,7 +488,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             smooth_lines = self.get_xs_fitted_smooth_df()
             obs_fit_res = self.get_xs_obs_fit_res_df()
             all_curves = pd.concat((obs_fit_res, smooth_lines), axis=1)
-            params = self.pn_fit_spec.loc[self.ps_types[self.PS_VALUES]]
+            params = self.pn_params_series.loc[self.ps_types[self.PS_VALUES]]
             try:
                 writer = pd.ExcelWriter(file_path)
                 all_curves.to_excel(writer,'Data')
@@ -552,7 +561,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         respectively) with values for each parameter for each series); if True, 
         parameter values is constant, if False, parameter value is variable.
         """
-        selected = (self.pn_fit_spec.loc[self.ps_types[self.PS_VALUE_FIXED], :, series_names] == qt.Qt.Checked).transpose()
+        selected = (self.pn_params_series.loc[self.ps_types[self.PS_VALUE_FIXED], :, series_names] == qt.Qt.Checked).transpose()
         return selected.as_matrix()
         
     def get_data_for_fitting(self, series_names):
@@ -576,7 +585,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         parallel to self.series_names and self.current_function.parameters, 
         respectively) with values for each parameter for each series).  
         """
-        selected = self.pn_fit_spec.loc[self.ps_types[self.PS_VALUES], :, series_names]
+        selected = self.pn_params_series.loc[self.ps_types[self.PS_VALUES], :, series_names]
         params = selected.as_matrix().transpose()
         return params
 
@@ -604,7 +613,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         and that the value for p1 is the same in all curves, whereas
         the value of p2 is different for all curves. 
         """
-        selected = self.pn_fit_spec.loc[self.ps_types[self.PS_GROUPS], :, series_names].transpose()
+        selected = self.pn_params_series.loc[self.ps_types[self.PS_GROUPS], :, series_names].transpose()
         links_array = cp.deepcopy(selected)
         for series, row in selected.iterrows():
             for param, txt in row.iteritems():
@@ -802,10 +811,10 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         self.tbl_fitted_params.setColumnCount(0)
         self.tbl_fitted_params.setRowCount(0)
         
-        pnames = self.pn_fit_spec.major_axis.values
+        pnames = self.pn_params_series.major_axis.values
         pheader = np.vstack((pnames, np.array(["Stderr\non " + pname for pname in pnames]))).transpose().ravel()
         pheader = np.hstack((pheader, np.array(["ftol"])))
-        sheader = self.pn_fit_spec.minor_axis.values
+        sheader = self.pn_params_series.minor_axis.values
 
         self.tbl_fitted_params.setColumnCount(len(pheader))
         self.tbl_fitted_params.setHorizontalHeaderLabels(pheader)
@@ -813,12 +822,12 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         self.tbl_fitted_params.setVerticalHeaderLabels(sheader)
         
         irow = -1
-        for sname in self.pn_fit_spec.minor_axis.values:
+        for sname in self.pn_params_series.minor_axis.values:
             irow += 1
             icol = -1
-            for pname in self.pn_fit_spec.major_axis.values:
-                pval = self.pn_fit_spec.loc[self.ps_types[self.PS_VALUES], pname, sname]
-                perr = self.pn_fit_spec.loc[self.ps_types[self.PS_SIGMAS], pname, sname]
+            for pname in self.pn_params_series.major_axis.values:
+                pval = self.pn_params_series.loc[self.ps_types[self.PS_VALUES], pname, sname]
+                perr = self.pn_params_series.loc[self.ps_types[self.PS_SIGMAS], pname, sname]
                 spval, sperr = "", ""
                 if not np.isnan(pval):
                     spval = '{:8.3g}'.format(pval)
@@ -843,7 +852,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
 
     def rationalise_groups(self, parameter):
         if self.current_state in (self.ST_READY, ) and parameter != '':
-            prow = self.pn_fit_spec.loc[self.ps_types[self.PS_GROUPS], parameter]
+            prow = self.pn_params_series.loc[self.ps_types[self.PS_GROUPS], parameter]
             x = prow.index
             df_wf = pd.DataFrame(np.zeros((len(x), len(x))), index=x, columns=x, dtype=bool) # set up the matrix
             for series, val in prow.iteritems():
@@ -866,7 +875,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                             sr_equiv_clss.loc[series1] = series0
                             seen.append(series1)
             for series in x:
-                self.pn_fit_spec.loc[self.ps_types[self.PS_GROUPS], parameter, series] = sr_equiv_clss.loc[series]
+                self.pn_params_series.loc[self.ps_types[self.PS_GROUPS], parameter, series] = sr_equiv_clss.loc[series]
         pass
  
     def update_controls(self):
@@ -933,8 +942,8 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         Sets combo-boxes in linkage_combos to the current values in linkage_groups        
         """
         if self.current_state in (self.ST_READY, ):
-            combos = self.pn_fit_spec.loc[self.ps_types[self.PS_COMBOS]]
-            vals = self.pn_fit_spec.loc[self.ps_types[self.PS_GROUPS]]
+            combos = self.pn_params_series.loc[self.ps_types[self.PS_COMBOS]]
+            vals = self.pn_params_series.loc[self.ps_types[self.PS_GROUPS]]
             try:
                 for i, row in vals.iterrows():
                     for j, val in row.iteritems():
@@ -949,13 +958,13 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
     def update_param_vals_table(self):
         """
         Sets text and checkstate of values table items to their corresponding 
-        logical values in pn_fit_spec        
+        logical values in pn_params_series        
         """
         if self.current_state in (self.ST_READY, ):
-            edts = self.pn_fit_spec.loc[self.ps_types[self.PS_LEDITS]]
-            cbxs = self.pn_fit_spec.loc[self.ps_types[self.PS_FIX_CBOXES]]
-            vals = self.pn_fit_spec.loc[self.ps_types[self.PS_VALUES]]
-            chks = self.pn_fit_spec.loc[self.ps_types[self.PS_VALUE_FIXED]]
+            edts = self.pn_params_series.loc[self.ps_types[self.PS_LEDITS]]
+            cbxs = self.pn_params_series.loc[self.ps_types[self.PS_FIX_CBOXES]]
+            vals = self.pn_params_series.loc[self.ps_types[self.PS_VALUES]]
+            chks = self.pn_params_series.loc[self.ps_types[self.PS_VALUE_FIXED]]
             try:
                 for i, row in vals.iterrows():
                     for j, val in row.iteritems():
