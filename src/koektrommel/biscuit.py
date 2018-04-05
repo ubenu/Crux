@@ -42,12 +42,12 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
     s_types = ['included', 'included_cboxes', 'ftol']
     p_types = ['all_fixed', 'all_fixed_cboxes', 'all_linked', 'all_linked_cboxes']
     ps_types = ['param_values', 'param_line_edits', 'param_values_fixed', 'param_fix_cboxes', 'series_groups', 'series_combos', 'sigmas']
-    sd_types = ['observed', 'calculated', 'difference']
+#     sd_types = ['observed', 'calculated', 'difference']
 
     PS_VALUES, PS_LEDITS, PS_VALUE_FIXED, PS_FIX_CBOXES, PS_GROUPS, PS_COMBOS, PS_SIGMAS = range(len(ps_types))
     P_ALL_FIXED, P_FIX_CBOXES, P_ALL_LINKED, P_LINK_CBOXES = range(len(p_types))
     S_INCLUDED, S_INCLUDE_CBOXES, S_FTOL = range(len(s_types))
-    SD_OBSERVED, SD_CALCULATED, SD_DIFFERENCE = range(len(sd_types))
+#     SD_OBSERVED, SD_CALCULATED, SD_DIFFERENCE = range(len(sd_types))
     
 
     def __init__(self, ):
@@ -103,6 +103,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         self.blits_fitted = BlitsData()
         self.blits_residuals = BlitsData()
         
+        self.pn_series_data = None
         self.pn_params_series = None
         self.pn_series_data = None
         self.df_params_spec = None
@@ -433,7 +434,14 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             file_path = widgets.QFileDialog.getOpenFileName(self, 
             "Open Data File", "", "CSV data files (*.csv);;All files (*.*)")[0]
             if file_path:
-                self.crux_reader.import_data(file_path)
+                self.pn_series_data = self.crux_reader.import_data(file_path)  
+                # this works (self.pn_series_data contains the correct data)
+                for i in self.pn_series_data.items:
+                    print(self.pn_series_data.loc[i])
+                    
+                ### From here
+                # needs data reduction
+                
                 axes = self.crux_reader.get_axes_names() #cp.deepcopy(self.crux_reader.get_axes_names())
                 self.current_xaxis = axes[0] #self.crux_reader.get_axes_names()[0]
                 if self.current_state == self.ST_START:
@@ -482,7 +490,6 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                 try:
                     checkstate = self.df_series_spec.loc[series, col].checkState()
                     self.df_series_spec.loc[series, self.s_types[self.S_INCLUDED]] = int(checkstate) 
-                    # synchronise with logical representation; int is necessary to make sure Qt recognises it (won't recognise int64 (??))
                 except Exception as e:
                     print(e)
                     

@@ -39,8 +39,33 @@ class BlitsData():
             return None
      
     def import_data(self, file_path):
-        self.raw_data = pd.read_csv(file_path)
+        raw_data = pd.read_csv(file_path)
+        f_type = self.assess_file_type(raw_data)
+        working_data = self.get_working_data(f_type, raw_data)
+        self.raw_data = cp.deepcopy(raw_data)
         self.create_working_data_from_file()
+        return working_data
+    
+    def get_working_data(self, file_type, raw_data):
+        if file_type == 'octet':
+            try:
+                series_names = raw_data.columns[~raw_data.columns.str.contains('unnamed', case=False)].values
+                n = len(series_names)
+                ncols = len(raw_data.columns) // n
+                cols = ['x{}'.format(i) for i in range(ncols)]
+                cols[-1] = 'y'
+                pn_series_data = pd.Panel(items=series_names, major_axis=raw_data.index, minor_axis=cols)
+                for i in range(n):
+                    pn_series_data.loc[series_names[i]] = raw_data.iloc[:, ncols*i:ncols*(i+1)].as_matrix()    
+                return pn_series_data
+            except Exception as e:
+                print(e)
+        return None
+        
+    def assess_file_type(self, df):
+        # to cater for more file types
+        # can be used to validate the file as well
+        return 'octet'
 
     def export_results(self, file_path):
         r = self.results.to_csv()
