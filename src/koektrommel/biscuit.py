@@ -249,6 +249,9 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                 # create the parameter values table
                 vrange = range(len(ptbl_vheader)-len(series), len(ptbl_vheader))
                 hrange = range((len(ptbl_hheader)-len(params)), len(ptbl_hheader))
+                
+                w = self.centred_tablewidget(self.chk_include_all)
+                self.tbl_param_values.setCellWidget(0, 0, w)
                 for sname, row in zip(series, vrange):
                     w = self.centred_tablewidget(self.df_series_spec.loc[sname, self.s_types[self.S_INCLUDE_CBOXES]])
                     self.tbl_param_values.setCellWidget(row, 0, w)
@@ -299,7 +302,11 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                 self.update_linkage_table()
                 
     def on_all_series_selected_changed(self):
-        pass
+        if self.current_state in (self.ST_READY, ):
+            print(self.df_series_spec.loc[:, self.s_types[self.S_INCLUDED]])
+            self.df_series_spec.loc[:, self.s_types[self.S_INCLUDED]] = self.chk_include_all.checkState()
+            self.update_param_vals_table()
+            
     
             
     def on_analyze(self):
@@ -965,7 +972,18 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             cbxs = self.pn_params_series.loc[self.ps_types[self.PS_FIX_CBOXES]]
             vals = self.pn_params_series.loc[self.ps_types[self.PS_VALUES]]
             chks = self.pn_params_series.loc[self.ps_types[self.PS_VALUE_FIXED]]
+            ichks = self.df_series_spec.loc[:, self.s_types[self.S_INCLUDE_CBOXES]]
+            ivals = self.df_series_spec.loc[:, self.s_types[self.S_INCLUDED]]
             try:
+                for i, val in ivals.iteritems():
+                    cbx = ichks.loc[i]
+                    checkstate = val
+                    if cbx.checkState() != checkstate:
+                        cbx.stateChanged.disconnect()
+                        cbx.setCheckState(qt.Qt.Unchecked)
+                        if checkstate == qt.Qt.Checked:
+                            cbx.setCheckState(qt.Qt.Checked)
+                        cbx.stateChanged.connect(self.on_series_selected_changed)
                 for i, row in vals.iterrows():
                     for j, val in row.iteritems():
                         edt = edts.loc[i, j]
