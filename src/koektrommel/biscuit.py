@@ -434,10 +434,20 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             file_path = widgets.QFileDialog.getOpenFileName(self, 
             "Open Data File", "", "CSV data files (*.csv);;All files (*.*)")[0]
             if file_path:
-                self.pn_series_data = self.crux_reader.import_data(file_path)  
+                self.pn_series_data = self.crux_reader.import_data(file_path)
                 # this works (self.pn_series_data contains the correct data)
                 for i in self.pn_series_data.items:
-                    print(self.pn_series_data.loc[i])
+                    self.pn_series_data.loc[i].loc[self.pn_series_data.loc[i].isnull().any(axis=1)] = np.nan
+                    self.pn_series_data.loc[i].sort_values(by='x0', inplace=True, na_position='last')
+#                     step = len(df) // self.max_points 
+#                     if step > 1:
+#                         r = np.arange(len(df))
+#                         filt = np.mod(r, step) == 0
+#                         df = df[filt]
+#                     ix = pd.Index(np.arange(len(df)))
+#                     df.set_index(ix, inplace=True)
+#                     self.series_dict[s_name] = df
+                    
                     
                 ### From here
                 # needs data reduction
