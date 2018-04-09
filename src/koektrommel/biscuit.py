@@ -372,25 +372,26 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         if self.current_state in (self.FUNCTION_ONLY, ):
             self.create_data_set_dialog = DataCreationDialog(None, self.current_function)
             if self.create_data_set_dialog.exec() == widgets.QDialog.Accepted:
-                self.crux_reader = BlitsData()
-                self.crux_reader.series_names = self.create_data_set_dialog.get_series_names()
-                self.crux_reader.axis_names = self.create_data_set_dialog.get_axes()
-                self.crux_reader.series_dict = self.create_data_set_dialog.get_series_dict()
-                df_pars = self.create_data_set_dialog.get_parameters()
-                self.current_state = self.ST_READY
-                self.current_xaxis = self.crux_reader.get_axes_names()[0]
-                try:
-                    self.create_axis_selector()
-                    self.draw_current_data_set()
-                    self.init_fit_spec()
-                    for pname, row in df_pars.iterrows():
-                        for sname, val in row.iteritems():
-                            self.pn_params_series.loc[self.ps_types[self.PS_VALUES], pname, sname] = val                                 
-                    self.init_ui()
-                except Exception as e:
-                    print(e)
-                self.update_controls()
-                self.on_select_function()
+                print("accepted")
+#                 self.crux_reader = BlitsData()
+#                 self.crux_reader.series_names = self.create_data_set_dialog.get_series_names()
+#                 self.crux_reader.axis_names = self.create_data_set_dialog.get_axes()
+#                 self.crux_reader.series_dict = self.create_data_set_dialog.get_series_dict()
+#                 df_pars = self.create_data_set_dialog.get_parameters()
+#                 self.current_state = self.ST_READY
+#                 self.current_xaxis = self.crux_reader.get_axes_names()[0]
+#                 try:
+#                     self.create_axis_selector()
+#                     self.draw_current_data_set()
+#                     self.init_fit_spec()
+#                     for pname, row in df_pars.iterrows():
+#                         for sname, val in row.iteritems():
+#                             self.pn_params_series.loc[self.ps_types[self.PS_VALUES], pname, sname] = val                                 
+#                     self.init_ui()
+#                 except Exception as e:
+#                     print(e)
+#                 self.update_controls()
+#                 self.on_select_function()
             pass
         pass
                 
