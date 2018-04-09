@@ -21,6 +21,7 @@ from koektrommel.data_creation_dialog import DataCreationDialog
 from koektrommel.crux_framework import FunctionsFramework
 
 from PyQt5.uic import loadUiType
+from unittest.mock import inplace
 Ui_MainWindow, QMainWindow = loadUiType('crux.ui')
 
 # Original:
@@ -109,7 +110,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         self.df_params_spec = None
         self.df_series_spec = None
         self.df_xlimits = None
-        self.axis_selector_buttons = None
+        self.df_axes_rbuttons = None
 
         self.current_xaxis = None
         self.current_function = None
@@ -349,12 +350,13 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
     def on_close_data(self):
         if self.current_state in (self.ST_DATA_ONLY, self.ST_READY, ):
             self.current_xaxis = None
-            self.set_axis_selector()
+            self.create_axis_selector()
             self.canvas.clear_plots()
             
-            self.crux_reader = BlitsData()
-            self.blits_fitted = BlitsData()
-            self.blits_residuals = BlitsData()
+            self.pn_series_data = None
+#             self.crux_reader = BlitsData()
+#             self.blits_fitted = BlitsData()
+#             self.blits_residuals = BlitsData()
             
             if self.current_state == self.ST_DATA_ONLY:
                 self.current_state = self.ST_START
@@ -378,7 +380,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                 self.current_state = self.ST_READY
                 self.current_xaxis = self.crux_reader.get_axes_names()[0]
                 try:
-                    self.set_axis_selector()
+                    self.create_axis_selector()
                     self.draw_current_data_set()
                     self.init_fit_spec()
                     for pname, row in df_pars.iterrows():
@@ -435,38 +437,35 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             "Open Data File", "", "CSV data files (*.csv);;All files (*.*)")[0]
             if file_path:
                 self.pn_series_data = self.crux_reader.import_data(file_path)
-                # this works (self.pn_series_data contains the correct data)
-                for i in self.pn_series_data.items:
-                    self.pn_series_data.loc[i].loc[self.pn_series_data.loc[i].isnull().any(axis=1)] = np.nan
-                    self.pn_series_data.loc[i].sort_values(by='x0', inplace=True, na_position='last')
-#                     step = len(df) // self.max_points 
-#                     if step > 1:
-#                         r = np.arange(len(df))
-#                         filt = np.mod(r, step) == 0
-#                         df = df[filt]
-#                     ix = pd.Index(np.arange(len(df)))
-#                     df.set_index(ix, inplace=True)
-#                     self.series_dict[s_name] = df
-                    
-                    
-                ### From here
-                # needs data reduction
-                
-                axes = self.crux_reader.get_axes_names() #cp.deepcopy(self.crux_reader.get_axes_names())
-                self.current_xaxis = axes[0] #self.crux_reader.get_axes_names()[0]
-                if self.current_state == self.ST_START:
-                    self.current_state = self.ST_DATA_ONLY
-                else:
-                    if len(self.current_function.independents) <= len(axes):
-                        self.current_state = self.ST_READY
-                    else:
-                        self.current_function = None
+                if self.pn_series_data is not None:
+                    xstds = pd.DataFrame(columns=self.pn_series_data.items, index=self.pn_series_data.minor_axis[:-1])
+                    for i in self.pn_series_data.items:
+                        self.pn_series_data.loc[i].loc[self.pn_series_data.loc[i].isnull().any(axis=1)] = np.nan
+                        xstds[i] = self.pn_series_data.loc[i].iloc[:, :-1].std(axis=0)
+                    self.current_xaxis = xstds.max(axis=1).idxmax() # set axis with largest variation as self.currrent_xaxis 
+                    for i in self.pn_series_data.items:
+                        self.pn_series_data.loc[i].sort_values(by=self.current_xaxis, inplace=True, na_position='last')
+                    step = len(self.pn_series_data.major_axis) // self.npoints_max
+                    if step > 1:
+                        r = np.arange(self.pn_series_data.shape[1])
+                        index_filter = np.mod(r, step) == 0
+                        self.pn_series_data = self.pn_series_data.loc[:, index_filter, :]
+                        indx = pd.Index(np.arange(self.pn_series_data.shape[1])) 
+                        self.pn_series_data.reindex_axis(indx, axis='major_axis', copy=False)
+                    if self.current_state == self.ST_START:
                         self.current_state = self.ST_DATA_ONLY
-                self.set_axis_selector()
-                self.init_fit_spec()
-                self.init_ui()
-                self.update_controls()
-                self.on_select_function()
+                    else:
+                        if len(self.current_function.independents) == len(self.pn_series_data.minor_axis[:-1]):
+                            self.current_state = self.ST_READY
+                        else:
+                            self.current_function = None
+                            self.current_state = self.ST_DATA_ONLY
+                    
+                    self.create_axis_selector()
+                    self.init_fit_spec()
+                    self.init_ui()
+                    self.update_controls()
+                    #self.on_select_function()
                     
     def on_param_fix_changed(self):
         if self.current_state in (self.ST_READY, ):
@@ -691,22 +690,21 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
 
 
             
-    def set_axis_selector(self):
-        self.axis_selector_buttons = {}
-        self.clearLayout(self.axis_layout)
-        if self.crux_reader.has_data():
+    def create_axis_selector(self):
+        if self.pn_series_data is not None:
+            self.clearLayout(self.axis_layout)
+            axis_names = self.pn_series_data.minor_axis[:-1]
+            self.df_axes_rbuttons = pd.Series(index=axis_names)
             self.axis_layout.addStretch()
-            for name in self.crux_reader.get_axes_names():
-                btn = widgets.QRadioButton()
-                btn.setText(name)
+            for name in axis_names:
+                btn = widgets.QRadioButton(name)
+                if name == self.current_xaxis:
+                    btn.setChecked(True)
                 btn.toggled.connect(self.on_xaxis_changed)
                 self.axis_layout.addWidget(btn)
-                self.axis_selector_buttons[btn.text()] = btn
-            self.axis_layout.addStretch()  
-            if not self.current_xaxis is None:
-                if self.current_xaxis in self.axis_selector_buttons:
-                    self.axis_selector_buttons[self.current_xaxis].setChecked(True)
-                
+                self.df_axes_rbuttons.loc[name] = btn              
+            self.axis_layout.addStretch()
+                            
     def set_calculated_curves(self):
         selected_series = self.get_selected_series_names()
         params = self.get_param_values_for_fitting(selected_series)

@@ -9,7 +9,7 @@ from PyQt5 import QtWidgets as widgets
 
 import pandas as pd, numpy as np, copy as cp
 
-import koektrommel.crux_function_definitions as fdefs # biskwietjes.crux_function_definitions as fdefs
+import koektrommel.crux_function_definitions as fdefs 
 
 
 if __name__ == '__main__':
@@ -38,10 +38,12 @@ class FunctionSelectionDialog(widgets.QDialog):
         self.tableview.setSelectionMode(widgets.QAbstractItemView.SingleSelection)
         self.tableview.doubleClicked.connect(self.accept)
         
-        self.selected_fn_name = selected_fn_name
-        if self.selected_fn_name != "":
+        if selected_fn_name == "" or selected_fn_name not in self.model.function_dictionary:
+            self.selected_fn_name = ""
+        else:
+            self.selected_fn_name = selected_fn_name
             self.tableview.selectRow(self.findItem(self.selected_fn_name).row())
-                
+            
         main_layout.addWidget(self.tableview)
         main_layout.addWidget(self.button_box)
         self.setLayout(main_layout)
@@ -59,8 +61,8 @@ class FunctionSelectionDialog(widgets.QDialog):
         self.selected_fn_name = self.tableview.model().data(i).value()
      
     def get_selected_function(self):
-        if self.selected_fn_name in self.model.funcion_dictionary:
-            return self.model.funcion_dictionary[self.selected_fn_name]
+        if self.selected_fn_name in self.model.function_dictionary:
+            return self.model.function_dictionary[self.selected_fn_name]
         return None
     
     def accept(self):
@@ -184,10 +186,7 @@ class FunctionLibraryTableModel(qt.QAbstractTableModel):
             fdefs.estimate_fn_therm_unfold,
             ),
         }
-    
-#     C:\Users\schilsm\git\Blits\src\koekjespak\blits.py
-#     C:\Users\schilsm\git\Blits\Resources\ModellingFunctions
-        
+            
     def __init__(self, n_axes, filepath="..\\..\\Resources\\ModellingFunctions\\Functions.csv"):
         super(FunctionLibraryTableModel, self).__init__()
         
@@ -196,12 +195,12 @@ class FunctionLibraryTableModel(qt.QAbstractTableModel):
         self.dirty = False
         
         self.modfuncs = []
-        self.funcion_dictionary = {}
+        self.function_dictionary = {}
         self.load_lib(n_axes)        
     
     def load_lib(self, n_axes):    
         self.modfuncs = []
-        self.funcion_dictionary = {}
+        self.function_dictionary = {}
         
         self.raw_data = pd.read_csv(self.filepath)
         self.raw_data.dropna(inplace=True)
@@ -252,7 +251,7 @@ class FunctionLibraryTableModel(qt.QAbstractTableModel):
             modfunc.p0 = self.fn_dictionary[modfunc.name][self.M_P0]
             if len(modfunc.independents) == n_axes or n_axes == 0:
                 self.modfuncs.append(modfunc)
-                self.funcion_dictionary[modfunc.name] = modfunc
+                self.function_dictionary[modfunc.name] = modfunc
             
     def headerData(self, section, orientation, role=qt.Qt.DisplayRole):
         # Implementation of super.headerData
