@@ -18,9 +18,9 @@ class DataCreationDialog(widgets.QDialog):
     def __init__(self, parent, selected_fn):
         self.function = selected_fn
         self.all_series_names = []
-        self.model_params = pd.Panel(major_axis=self.function.parameters, minor_axis=['Value'])
-        self.axes_params = pd.Panel(major_axis=self.function.independents, minor_axis=['Start', 'End', 'npoints', 'std'])
-        self.df_text_boxes = pd.DataFrame(columns=['npoints', 'std'])
+        self.pn_model_params = pd.Panel(major_axis=self.function.parameters, minor_axis=['Value'])
+        self.pn_axes_params = pd.Panel(major_axis=self.function.independents, minor_axis=['Start', 'End'])
+        self.df_series_spec = pd.DataFrame(columns=['edit_npoint', 'edit_std', 'npoints', 'std'])
         self.template = None
                 
         super(DataCreationDialog, self).__init__(parent)
@@ -64,29 +64,31 @@ class DataCreationDialog(widgets.QDialog):
     
             lbl_npoints = widgets.QLabel("Number of data points")
             txt_npoints = widgets.QLineEdit("21")
-            txt_npoints.textChanged.connect(self.on_npoints_changed)
+            txt_npoints.textChanged.connect(self.on_spec_changed)
             txt_npoints.setValidator(gui.QIntValidator())
-            self.df_text_boxes.loc[name, 'npoints'] = txt_npoints
             
             lbl_noise = widgets.QLabel("Standard deviation on data points")
             txt_std = widgets.QLineEdit("0.0")
-            txt_std.textChanged.connect(self.on_std_changed)
+            txt_std.textChanged.connect(self.on_spec_changed)
             txt_std.setValidator(gui.QDoubleValidator())
-            self.df_text_boxes.loc[name, 'std'] = txt_std
+            self.df_series_spec.loc[name, 'edit_npoints'] = txt_npoints
+            self.df_series_spec.loc[name, 'edit_std'] = txt_std
+            self.df_series_spec.loc[name, 'npoints'] = txt_npoints.text()
+            self.df_series_spec.loc[name, 'std'] = txt_std.text()
             
-            df_axes = pd.DataFrame(index=self.axes_params.major_axis, columns=self.axes_params.minor_axis)
-            self.model_params.loc[name] = df_axes
+            df_axes = pd.DataFrame(index=self.pn_axes_params.major_axis, columns=self.pn_axes_params.minor_axis)
+            self.pn_model_params.loc[name] = df_axes
             df_axes.Start = 0.0
             df_axes.End = 10.0
             df_axes.npoints = int(txt_npoints.text())
             df_axes.std = float(txt_std.text()) 
             
-            df_params = pd.DataFrame(index=self.model_params.major_axis, columns=self.model_params.minor_axis)
+            df_params = pd.DataFrame(index=self.pn_model_params.major_axis, columns=self.pn_model_params.minor_axis)
             df_params.loc[:, :] = np.ones(df_params.values.shape)
-            self.model_params.loc[name] = df_params
+            self.pn_model_params.loc[name] = df_params
             
             mdl_axes = CruxTableModel(df_axes.loc[:, 'Start':'End'])
-            mdl_pars = CruxTableModel(df_params)
+            mdl_pars = CruxTableModel(self.pn_model_params.loc[name])
 
             lbl_axes = widgets.QLabel('&Axes parameters')
             tbl_axes = widgets.QTableView()
@@ -121,11 +123,30 @@ class DataCreationDialog(widgets.QDialog):
             print(e)
             
 
-    def on_npoints_changed(self):
-        print(self.sender())
+    def on_spec_changed(self):
+        nps, std, sel = False, False, ""
+        print(self.pn_model_params)
+        try:
+            for sname, row in self.df_series_spec.iterrows():
+                for cat, item in row.iteritems():
+                    if item == self.sender():
+                            if cat == 'edit_npoints':
+                                nps = True
+                                sel = sname              
+                            elif cat == 'edit_std':
+                                std = True
+                                sel = sname
+            if nps: # should not change matrix while iterating over it, hence this construction
+                self.df_series_spec.loc[sel, 'npoints'] = int(self.sender().text())
+            elif std:
+                self.df_series_spec.loc[sel, 'std'] = float(self.sender().text())
+            else:
+                pass
+            
+        except Exception as e:
+            print(e)
+                    
     
-    def on_std_changed(self):
-        print(self.sender())
         
             
 #     def get_parameters(self):
@@ -134,7 +155,7 @@ class DataCreationDialog(widgets.QDialog):
 #         """
 #         df_all_parameters = pd.DataFrame()
 #         for name in self.all_series_names:
-#             df_p = self.model_params[name].df_data # parameters for this series
+#             df_p = self.pn_model_params[name].df_data # parameters for this series
 #             df_all_parameters = pd.concat([df_all_parameters, df_p], axis=1) # add to all parameters            
 #         return cp.deepcopy(df_all_parameters)
 #     
@@ -148,10 +169,10 @@ class DataCreationDialog(widgets.QDialog):
 #         df_all_series = pd.DataFrame()
 #         series_dict = {}
 #         for name in self.all_series_names:
-#             df_p = self.model_params[name].df_data # parameters for this series
-#             df_si = self.axes_params[name][0].df_data # axes start, stop, and std on data
-#             n = int(self.axes_params[name][1].text()) # number of points in series
-#             std = float(self.axes_params[name][2].text())
+#             df_p = self.pn_model_params[name].df_data # parameters for this series
+#             df_si = self.pn_axes_params[name][0].df_data # axes start, stop, and std on data
+#             n = int(self.pn_axes_params[name][1].text()) # number of points in series
+#             std = float(self.pn_axes_params[name][2].text())
 #             cols = df_si.index # independent axes names
 #             df_s = pd.DataFrame([], index=range(n), columns=cols) # dataframe for axes values
 #             for col in cols:
