@@ -185,6 +185,9 @@ class FunctionLibraryTableModel(qt.QAbstractTableModel):
             fdefs.fn_therm_unfold,
             fdefs.estimate_fn_therm_unfold,
             ),
+        "1:1 complex formation": (
+            fdefs.fn_ab_complex,
+            fdefs.estimate_fn_ab_complex)
         }
             
     def __init__(self, n_axes, filepath="..\\..\\Resources\\ModellingFunctions\\Functions.csv"):

@@ -319,7 +319,8 @@ def root_fn_comp_bind(p, Kdl, Kdn, p0, l0, n0):
 def estimate_fn_comp_binding(data, n_parameters):
     n_independents = 3
     if data_valid(data, n_independents):
-        p0 = np.ones((n_parameters,), dtype=float)
+        KdL, KdN, eP, eL, eN, ePL, ePN = 1.0, 1.0, 0.0, 0.5, 0.0, 1.0, 0.0
+        p0 = np.array([KdL, KdN, eP, eL, eN, ePL, ePN])
         return p0
     return None
 
@@ -402,4 +403,30 @@ def estimate_fn_therm_unfold(data, n_parameters):
         return p0
     return None
     
+def fn_ab_complex(x, params):
+    Kd, eA, eB, eAB = params
+    a0 = x[0]
+    b0 = x[1]
+    ab = np.empty_like(a0)
+    fn = root_fn_ab_complex
+    i = 0
+    for a0i, b0i in zip(a0, b0):
+        ab[i] = brentq(fn, 0, min(a0i, b0i), (Kd, a0i, b0i)) 
+        i += 1 
+    a = a0 - ab
+    b = b0 - ab       
+    return eA*a + eB*b + eAB*ab
+
+def root_fn_ab_complex(ab, Kd, a0, b0):
+    result = ab*ab - (Kd+a0+b0)*ab + a0*b0
+    return result
+    
+def estimate_fn_ab_complex(data, n_parameters):
+    n_independents = 2
+    if data_valid(data, n_independents):
+        Kd, eA, eB, eAB = 1.0, 0.0, 0.5, 1.0
+        p0 = np.array([Kd, eA, eB, eAB])
+        return p0
+    return None
+
     
