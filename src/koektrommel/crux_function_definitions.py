@@ -357,7 +357,7 @@ def estimate_fn_chem_unfold(data, n_parameters):
         slopeN = 0.0 
         intU = y[-1] 
         slopeU = 0.0 
-        tempC = 25.0
+        tempC = 25.00
         p0 = np.array([dG0NU, mNU, intN, slopeN, intU, slopeU, tempC])
         return p0
     return None
