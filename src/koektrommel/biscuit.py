@@ -40,14 +40,14 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
     N_STATES = 5
     ST_START, ST_DATA_ONLY, FUNCTION_ONLY, ST_READY, REJECT = range(N_STATES)
     
-    s_types = ['included', 'included_cboxes', 'ftol']
+    s_types = ['included', 'included_cboxes', 'ftol', 'colour']
     p_types = ['all_fixed', 'all_fixed_cboxes', 'all_linked', 'all_linked_cboxes']
     ps_types = ['param_values', 'param_line_edits', 'param_values_fixed', 'param_fix_cboxes', 'series_groups', 'series_combos', 'sigmas']
 #     sd_types = ['observed', 'calculated', 'difference']
 
     PS_VALUES, PS_LEDITS, PS_VALUE_FIXED, PS_FIX_CBOXES, PS_GROUPS, PS_COMBOS, PS_SIGMAS = range(len(ps_types))
     P_ALL_FIXED, P_FIX_CBOXES, P_ALL_LINKED, P_LINK_CBOXES = range(len(p_types))
-    S_INCLUDED, S_INCLUDE_CBOXES, S_FTOL = range(len(s_types))
+    S_INCLUDED, S_INCLUDE_CBOXES, S_FTOL, S_COLOUR = range(len(s_types))
 #     SD_OBSERVED, SD_CALCULATED, SD_DIFFERENCE = range(len(sd_types))
     
 
@@ -126,32 +126,12 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         self.pn_params_series = None
         self.df_series_spec = None 
         self.df_params_spec = None
-        if self.current_state in (self.ST_READY, ):
-            series_names = self.crux_reader.get_series_names()
-            param_names = self.current_function.get_parameter_names()
-            axis_names = self.crux_reader.get_axes_names()
-            
-            self.df_xlimits = pd.DataFrame(columns=['min', 'max'], index=axis_names)
-            mins, maxs = self.crux_reader.series_extremes()
-            xmins, xmaxs = mins.iloc[:, :-1].min(axis=0), maxs.iloc[:, :-1].max(axis=0)
-            self.df_xlimits.loc[:, 'min'] = xmins
-            self.df_xlimits.loc[:, 'max'] = xmaxs
-
-            self.pn_params_series = pd.Panel(major_axis=param_names, minor_axis=series_names, items=self.ps_types)
-            self.pn_params_series.loc[self.ps_types[self.PS_VALUES]] = 1.0
-            self.pn_params_series.loc[self.ps_types[self.PS_VALUE_FIXED]] = qt.Qt.Unchecked
-            
+        if self.current_state in (self.ST_DATA_ONLY, self.ST_READY, ):
+            series_names = self.pn_series_data.items.values #  self.crux_reader.get_series_names()
+            self.canvas.set_colours(series_names.tolist())
+            axis_names = self.pn_series_data.minor_axis.values # self.crux_reader.get_axes_names()
             self.df_series_spec = pd.DataFrame(index=series_names, columns=self.s_types)
             self.df_series_spec.loc[:, self.s_types[self.S_INCLUDED]] = qt.Qt.Checked
-            self.df_params_spec = pd.DataFrame(index=param_names, columns=self.p_types)
-            self.df_params_spec.loc[:, self.p_types[self.P_ALL_FIXED]] = qt.Qt.Unchecked
-            self.df_params_spec.loc[:, self.p_types[self.P_ALL_LINKED]] = qt.Qt.Unchecked
-            
-            self.chk_include_all = widgets.QCheckBox()
-            self.chk_include_all.setText("")
-            self.chk_include_all.setToolTip("Check to include all in analysis")
-            self.chk_include_all.setCheckState(qt.Qt.Checked) 
-            self.chk_include_all.stateChanged.connect(self.on_all_series_selected_changed)
             for sname in series_names:
                 cbx = widgets.QCheckBox()
                 cbx.setText("")
@@ -160,47 +140,70 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                 # int() is necessary for the checkbox to recognise the type as valid (int64 isn't)
                 self.df_series_spec.loc[sname, self.s_types[self.S_INCLUDE_CBOXES]] = cbx 
                 cbx.stateChanged.connect(self.on_series_selected_changed)
-                           
-            for pname in param_names:
-                cb_lnk = widgets.QCheckBox()
-                cb_lnk.setCheckState(qt.Qt.Unchecked)
-                cb_lnk.setText("")
-                cb_lnk.setToolTip("Check to link " + pname + " across all series")
-                cb_lnk.stateChanged.connect(self.on_all_linked_changed)
                 
-                cb_fix = widgets.QCheckBox()
-                cb_fix.setCheckState(qt.Qt.Unchecked)
-                cb_fix.setText("")
-                cb_fix.setToolTip("Check to keep " + pname + " constant for all series")
-                cb_fix.stateChanged.connect(self.on_all_fixed_changed)
+            if self.current_state in (self.ST_READY, ):
+                param_names = self.current_function.get_parameter_names()
                 
-                self.df_params_spec.loc[pname, self.p_types[self.P_ALL_LINKED]] = int(cb_lnk.checkState())
-                self.df_params_spec.loc[pname, self.p_types[self.P_LINK_CBOXES]] = cb_lnk
-                self.df_params_spec.loc[pname, self.p_types[self.P_ALL_FIXED]] = int(cb_fix.checkState())
-                self.df_params_spec.loc[pname, self.p_types[self.P_FIX_CBOXES]] = cb_fix
+                self.df_xlimits = pd.DataFrame(columns=['min', 'max'], index=axis_names)
+                mins, maxs = self.crux_reader.series_extremes()
+                xmins, xmaxs = mins.iloc[:, :-1].min(axis=0), maxs.iloc[:, :-1].max(axis=0)
+                self.df_xlimits.loc[:, 'min'] = xmins
+                self.df_xlimits.loc[:, 'max'] = xmaxs
+    
+                self.pn_params_series = pd.Panel(major_axis=param_names, minor_axis=series_names, items=self.ps_types)
+                self.pn_params_series.loc[self.ps_types[self.PS_VALUES]] = 1.0
+                self.pn_params_series.loc[self.ps_types[self.PS_VALUE_FIXED]] = qt.Qt.Unchecked
                 
-            for pname in param_names:      
-                for sname in series_names:
-                    edt = widgets.QLineEdit()
-                    edt.setValidator(gui.QDoubleValidator())
-                    edt.setText("{:.3g}".format(self.pn_params_series.loc[self.ps_types[self.PS_VALUES], pname, sname]))
-                    edt.textChanged.connect(self.on_param_val_changed)
-                    cbx = widgets.QCheckBox()
-                    cbx.setToolTip("Check to keep " + pname + " constant for series " + sname)
-                    cbx.setCheckState(qt.Qt.Unchecked)
-                    cbx.stateChanged.connect(self.on_param_fix_changed)
+                self.df_params_spec = pd.DataFrame(index=param_names, columns=self.p_types)
+                self.df_params_spec.loc[:, self.p_types[self.P_ALL_FIXED]] = qt.Qt.Unchecked
+                self.df_params_spec.loc[:, self.p_types[self.P_ALL_LINKED]] = qt.Qt.Unchecked
+                
+                self.chk_include_all = widgets.QCheckBox()
+                self.chk_include_all.setText("")
+                self.chk_include_all.setToolTip("Check to include all in analysis")
+                self.chk_include_all.setCheckState(qt.Qt.Checked) 
+                self.chk_include_all.stateChanged.connect(self.on_all_series_selected_changed)
+                               
+                for pname in param_names:
+                    cb_lnk = widgets.QCheckBox()
+                    cb_lnk.setCheckState(qt.Qt.Unchecked)
+                    cb_lnk.setText("")
+                    cb_lnk.setToolTip("Check to link " + pname + " across all series")
+                    cb_lnk.stateChanged.connect(self.on_all_linked_changed)
                     
-                    combo = widgets.QComboBox()
-                    combo.addItems(series_names)
-                    combo.setEditable(False)
-                    combo.setCurrentText(sname)
-                    combo.currentIndexChanged.connect(self.on_linkage_changed)
-                    try:
-                        sp_vals = [float(edt.text()), edt, cbx.checkState(), cbx, combo.currentText(), combo]
-                        for sp, val in zip(self.ps_types, sp_vals):
-                            self.pn_params_series.loc[sp, pname, sname] = val
-                    except Exception as e:
-                        print(e)
+                    cb_fix = widgets.QCheckBox()
+                    cb_fix.setCheckState(qt.Qt.Unchecked)
+                    cb_fix.setText("")
+                    cb_fix.setToolTip("Check to keep " + pname + " constant for all series")
+                    cb_fix.stateChanged.connect(self.on_all_fixed_changed)
+                    
+                    self.df_params_spec.loc[pname, self.p_types[self.P_ALL_LINKED]] = int(cb_lnk.checkState())
+                    self.df_params_spec.loc[pname, self.p_types[self.P_LINK_CBOXES]] = cb_lnk
+                    self.df_params_spec.loc[pname, self.p_types[self.P_ALL_FIXED]] = int(cb_fix.checkState())
+                    self.df_params_spec.loc[pname, self.p_types[self.P_FIX_CBOXES]] = cb_fix
+                    
+                for pname in param_names:      
+                    for sname in series_names:
+                        edt = widgets.QLineEdit()
+                        edt.setValidator(gui.QDoubleValidator())
+                        edt.setText("{:.3g}".format(self.pn_params_series.loc[self.ps_types[self.PS_VALUES], pname, sname]))
+                        edt.textChanged.connect(self.on_param_val_changed)
+                        cbx = widgets.QCheckBox()
+                        cbx.setToolTip("Check to keep " + pname + " constant for series " + sname)
+                        cbx.setCheckState(qt.Qt.Unchecked)
+                        cbx.stateChanged.connect(self.on_param_fix_changed)
+                        
+                        combo = widgets.QComboBox()
+                        combo.addItems(series_names)
+                        combo.setEditable(False)
+                        combo.setCurrentText(sname)
+                        combo.currentIndexChanged.connect(self.on_linkage_changed)
+                        try:
+                            sp_vals = [float(edt.text()), edt, cbx.checkState(), cbx, combo.currentText(), combo]
+                            for sp, val in zip(self.ps_types, sp_vals):
+                                self.pn_params_series.loc[sp, pname, sname] = val
+                        except Exception as e:
+                            print(e)
                 
     def init_ui(self):
         self.tbl_series_links.clear()
@@ -215,10 +218,12 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
         else:
             self.lbl_fn_name.setText("Selected function: None")
             self.txt_description.setText("")
-        if self.current_state in (self.ST_READY, ):
+        if self.current_state in (self.ST_DATA_ONLY, self.ST_READY, ):
+            if self.pn_series_data is not None:
+                series = self.pn_series_data.items.values
             if self.pn_params_series is not None:
                 params = self.pn_params_series.major_axis.values
-                series = self.pn_params_series.minor_axis.values
+#                 series = self.pn_params_series.minor_axis.values
                 colours = self.canvas.curve_colours
                 
                 ptbl_vheader = [widgets.QTableWidgetItem("All")]
@@ -233,7 +238,6 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                 ptbl_hheader.extend(params)
                 self.tbl_param_values.setColumnCount(len(ptbl_hheader))
                 self.tbl_param_values.setHorizontalHeaderLabels(ptbl_hheader)
-
 
                 ltbl_vheader = [widgets.QTableWidgetItem("All")]
                 for sname in series:
@@ -354,9 +358,9 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             self.canvas.clear_plots()
             
             self.pn_series_data = None
-#             self.crux_reader = BlitsData()
-#             self.blits_fitted = BlitsData()
-#             self.blits_residuals = BlitsData()
+            self.crux_reader = BlitsData()
+            self.blits_fitted = BlitsData()
+            self.blits_residuals = BlitsData()
             
             if self.current_state == self.ST_DATA_ONLY:
                 self.current_state = self.ST_START
@@ -460,13 +464,16 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
                             self.current_state = self.ST_READY
                         else:
                             self.current_function = None
-                            self.current_state = self.ST_DATA_ONLY
+                            self.current_state = self.ST_DATA_ONLY                    
                     
                     self.create_axis_selector()
                     self.init_fit_spec()
                     self.init_ui()
                     self.update_controls()
-                    #self.on_select_function()
+                    self.draw_current_data_set()
+                pass
+            pass
+        pass
                     
     def on_param_fix_changed(self):
         if self.current_state in (self.ST_READY, ):
@@ -933,7 +940,7 @@ class Main(widgets.QMainWindow, Ui_MainWindow): # ui.Ui_MainWindow):
             self.action_quit.setEnabled(True) 
         elif self.current_state == self.FUNCTION_ONLY:
             self.action_open.setEnabled(True)
-            self.action_create.setEnabled(True)
+            self.action_create.setEnabled(False) #True)
             self.action_close.setEnabled(False)
             self.action_save.setEnabled(False)
             self.action_select_function.setEnabled(True)

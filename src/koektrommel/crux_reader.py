@@ -52,9 +52,9 @@ class BlitsData():
                 series_names = raw_data.columns[~raw_data.columns.str.contains('unnamed', case=False)].values
                 n = len(series_names)
                 ncols = len(raw_data.columns) // n
-                cols = ['x{}'.format(i) for i in range(ncols)]
-                cols[-1] = 'y'
-                pn_series_data = pd.Panel(items=series_names, major_axis=raw_data.index, minor_axis=cols)
+                axes = ['x{}'.format(i) for i in range(ncols)]
+                axes[-1] = 'y'
+                pn_series_data = pd.Panel(items=series_names, major_axis=raw_data.index, minor_axis=axes)
                 for i in range(n):
                     pn_series_data.loc[series_names[i]] = raw_data.iloc[:, ncols*i:ncols*(i+1)].as_matrix()    
                 return pn_series_data

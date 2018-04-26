@@ -1,5 +1,5 @@
 Attribute,Value
-Name,Mean 
+Name,Mean
 Short description,Mean (average) of data in y
 Long description,Mean of observed data over all x
 Function,y = mean * 1
