@@ -190,7 +190,7 @@ class FunctionLibraryTableModel(qt.QAbstractTableModel):
             fdefs.estimate_fn_ab_complex)
         }
             
-    def __init__(self, n_axes, filepath="..\\..\\Resources\\ModellingFunctions\\Functions.csv"):
+    def __init__(self, n_axes, filepath="Functions.csv"):
         super(FunctionLibraryTableModel, self).__init__()
         
         self.filepath = filepath

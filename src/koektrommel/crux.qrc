@@ -1,13 +1,14 @@
 <RCC>
-  <qresource prefix="Images">
-    <file>Images/BiscuitCalculate.png</file>
-    <file>Images/BiscuitClose.png</file>
-    <file>Images/BiscuitEstimate.png</file>
-    <file>Images/BiscuitFit.png</file>
-    <file>Images/BiscuitFunction.png</file>
-    <file>Images/BiscuitNew.png</file>
-    <file>Images/BiscuitOpen.png</file>
-    <file>Images/BiscuitSave.png</file>
-    <file>Images/TheBiscuit.png</file>
+  <qresource>
+    <file>BiscuitCalculate.png</file>
+    <file>BiscuitClose.png</file>
+    <file>BiscuitEstimate.png</file>
+    <file>BiscuitFit.png</file>
+    <file>BiscuitFunction.png</file>
+    <file>BiscuitNew.png</file>
+    <file>BiscuitOpen.png</file>
+    <file>BiscuitSave.png</file>
+    <file>TheCrux.png</file>
+    <file>TheBiscuit.png</file>
   </qresource>
 </RCC>

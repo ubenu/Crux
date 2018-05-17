@@ -13,6 +13,13 @@
   <property name="windowTitle">
    <string>The Crux of the Biscuit</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="crux.qrc">
+    <normaloff>:/TheBiscuit.png</normaloff>:/TheBiscuit.png</iconset>
+  </property>
+  <property name="toolTip">
+   <string>The Crux of the Biscuit</string>
+  </property>
   <property name="iconSize">
    <size>
     <width>24</width>
@@ -426,11 +433,14 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset>
-     <normaloff>Images/BiscuitSave.png</normaloff>Images/BiscuitSave.png</iconset>
+    <iconset resource="crux.qrc">
+     <normaloff>:/BiscuitSave.png</normaloff>:/BiscuitSave.png</iconset>
    </property>
    <property name="text">
     <string>Save results</string>
+   </property>
+   <property name="toolTip">
+    <string>Save the parameter values and best fit curves to a comma-separated values (csv) file</string>
    </property>
   </action>
   <action name="action_quit">
@@ -443,71 +453,86 @@
   </action>
   <action name="action_select_function">
    <property name="icon">
-    <iconset>
-     <normaloff>Images/BiscuitFunction.png</normaloff>Images/BiscuitFunction.png</iconset>
+    <iconset resource="crux.qrc">
+     <normaloff>:/BiscuitFunction.png</normaloff>:/BiscuitFunction.png</iconset>
    </property>
    <property name="text">
     <string>Select function</string>
    </property>
+   <property name="toolTip">
+    <string>Select an objective function from the list in the dialog that will open</string>
+   </property>
   </action>
   <action name="action_create">
    <property name="icon">
-    <iconset>
-     <normaloff>Images/BiscuitNew.png</normaloff>Images/BiscuitNew.png</iconset>
+    <iconset resource="crux.qrc">
+     <normaloff>:/BiscuitNew.png</normaloff>:/BiscuitNew.png</iconset>
    </property>
    <property name="text">
     <string>Create data set</string>
    </property>
    <property name="toolTip">
-    <string>Create data set</string>
+    <string>Create a new data set (give parameter values and independent ranges in the dialog that will open)</string>
    </property>
   </action>
   <action name="action_open">
    <property name="icon">
-    <iconset>
-     <normaloff>Images/BiscuitOpen.png</normaloff>Images/BiscuitOpen.png</iconset>
+    <iconset resource="crux.qrc">
+     <normaloff>:/BiscuitOpen.png</normaloff>:/BiscuitOpen.png</iconset>
    </property>
    <property name="text">
     <string>Open data set</string>
    </property>
    <property name="toolTip">
-    <string>Open data set</string>
+    <string>Open an existing data set (Octet format, comma-separated values)</string>
    </property>
   </action>
   <action name="action_analyze">
    <property name="icon">
-    <iconset>
-     <normaloff>Images/BiscuitFit.png</normaloff>Images/BiscuitFit.png</iconset>
+    <iconset resource="crux.qrc">
+     <normaloff>:/BiscuitFit.png</normaloff>:/BiscuitFit.png</iconset>
    </property>
    <property name="text">
     <string>Perform fit</string>
    </property>
+   <property name="toolTip">
+    <string>Determine which parameters values model the data best</string>
+   </property>
   </action>
   <action name="action_close">
    <property name="icon">
-    <iconset>
-     <normaloff>Images/BiscuitClose.png</normaloff>Images/BiscuitClose.png</iconset>
+    <iconset resource="crux.qrc">
+     <normaloff>:/BiscuitClose.png</normaloff>:/BiscuitClose.png</iconset>
    </property>
    <property name="text">
     <string>Close data set</string>
    </property>
+   <property name="toolTip">
+    <string>Close the current data set</string>
+   </property>
   </action>
   <action name="action_estimate">
    <property name="icon">
-    <iconset>
-     <normaloff>Images/BiscuitEstimate.png</normaloff>Images/BiscuitEstimate.png</iconset>
+    <iconset resource="crux.qrc">
+     <normaloff>:/BiscuitEstimate.png</normaloff>:/BiscuitEstimate.png</iconset>
    </property>
    <property name="text">
     <string>Estimate</string>
    </property>
+   <property name="toolTip">
+    <string>Set a first estimate for the parameter values</string>
+   </property>
   </action>
   <action name="action_apply">
    <property name="icon">
-    <iconset>
-     <normaloff>Images/BiscuitCalculate.png</normaloff>Images/BiscuitCalculate.png</iconset>
+    <iconset resource="crux.qrc">
+     <normaloff>:/BiscuitCalculate.png</normaloff>:/BiscuitCalculate.png</iconset>
    </property>
    <property name="text">
     <string>Calculate</string>
+   </property>
+   <property name="toolTip">
+    <string>Apply the current parameter values to the objective function</string>
    </property>
   </action>
  </widget>
